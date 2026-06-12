@@ -1,4 +1,4 @@
-from django.db.models import Sum
+from decimal import Decimal
 from django.contrib.auth.models import User
 from rest_framework import status
 from rest_framework.authtoken.models import Token
@@ -11,6 +11,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from .models import Category, Expense
 from .serializers import CategorySerializer, ExpenseSerializer, RegisterSerializer
+from . import currency
 
 
 @api_view(["POST"])
@@ -133,11 +134,31 @@ def expense_detail(request, pk):
     return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+def _convert_safe(amount, from_currency):
+    try:
+        return currency.convert(amount, from_currency, currency.BASE_CURRENCY)
+    except Exception:
+        return amount
+
+
 @api_view(["GET"])
 def expense_summary(request):
-    summary = (
-        Expense.objects.values("category__name")
-        .annotate(total=Sum("amount"))
-        .order_by("category__name")
+    base = currency.BASE_CURRENCY
+    expenses = Expense.objects.filter(owner=request.user).select_related("category")
+
+    totals: dict[str, Decimal] = {}
+    for exp in expenses:
+        converted = _convert_safe(exp.amount, exp.currency)
+        totals[exp.category.name] = (
+            totals.get(exp.category.name, Decimal("0")) + converted
+        )
+
+    return Response(
+        {
+            "base_currency": base,
+            "categories": [
+                {"category": name, "total": f"{total:.2f}"}
+                for name, total in sorted(totals.items())
+            ],
+        }
     )
-    return Response(list(summary))
