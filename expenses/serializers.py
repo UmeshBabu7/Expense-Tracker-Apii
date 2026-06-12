@@ -47,6 +47,9 @@ class ExpenseSerializer(serializers.ModelSerializer):
             "notes",
         ]
 
+    def validate_currency(self, value):
+        return value.upper()
+
     def validate_category(self, value):
         if value.owner_id != self.context["request"].user.id:
             raise serializers.ValidationError("Category not found.")
