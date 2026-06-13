@@ -11,7 +11,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from .models import Category, Expense
 from .serializers import CategorySerializer, ExpenseSerializer, RegisterSerializer
-from . import currency
+from . import currency, alerts
 
 
 @api_view(["POST"])
@@ -104,7 +104,8 @@ def expense_list(request):
 
     serializer = ExpenseSerializer(data=request.data, context={"request": request})
     serializer.is_valid(raise_exception=True)
-    serializer.save(owner=request.user)
+    expense = serializer.save(owner=request.user)
+    _check_budget(expense)
     return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
@@ -127,7 +128,8 @@ def expense_detail(request, pk):
             context={"request": request},
         )
         serializer.is_valid(raise_exception=True)
-        serializer.save()
+        expense = serializer.save()
+        _check_budget(expense)
         return Response(serializer.data)
 
     expense.delete()
@@ -162,3 +164,35 @@ def expense_summary(request):
             ],
         }
     )
+
+
+def _month_total(category, year, month, exclude_id=None):
+    qs = category.expenses.filter(date__year=year, date__month=month)
+    if exclude_id is not None:
+        qs = qs.exclude(pk=exclude_id)
+    total = Decimal("0")
+    for exp in qs:
+        total += _convert_safe(exp.amount, exp.currency)
+    return total
+
+
+def _check_budget(expense):
+    category = expense.category
+    if category.monthly_limit is None:
+        return
+
+    year, month = expense.date.year, expense.date.month
+    total_after = _month_total(category, year, month)
+    this_amount = _convert_safe(expense.amount, expense.currency)
+    total_before = total_after - this_amount
+
+    limit = category.monthly_limit
+    if total_before <= limit < total_after:
+        period = expense.date.strftime("%B %Y")
+        alerts.send_budget_alert(
+            category_name=category.name,
+            spent=f"{total_after:.2f}",
+            limit=f"{limit:.2f}",
+            currency=currency.BASE_CURRENCY,
+            period=period,
+        )

@@ -1,5 +1,7 @@
 from django.db import models
 from django.conf import settings
+from decimal import Decimal
+from django.core.validators import MinValueValidator
 
 
 class Category(models.Model):
@@ -14,6 +16,7 @@ class Category(models.Model):
         decimal_places=2,
         null=True,
         blank=True,
+        validators=[MinValueValidator(Decimal("0"))],
     )
     description = models.CharField(max_length=255, blank=True)
 
