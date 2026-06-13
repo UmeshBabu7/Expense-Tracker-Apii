@@ -185,6 +185,24 @@ def expense_summary(request):
     )
 
 
+@api_view(["GET"])
+def monthly_summary(request):
+    base = currency.BASE_CURRENCY
+    expenses = Expense.objects.filter(owner=request.user)
+
+    totals: dict[str, Decimal] = {}
+    for exp in expenses:
+        key = exp.date.strftime("%Y-%m")
+        converted = _convert_safe(exp.amount, exp.currency)
+        totals[key] = totals.get(key, Decimal("0")) + converted
+
+    months = [
+        {"month": month, "total": f"{total:.2f}"}
+        for month, total in sorted(totals.items(), reverse=True)
+    ]
+    return Response({"base_currency": base, "months": months})
+
+
 def _month_total(category, year, month, exclude_id=None):
     qs = category.expenses.filter(date__year=year, date__month=month)
     if exclude_id is not None:
