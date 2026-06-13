@@ -275,9 +275,9 @@ public auth endpoints.
 
 **Example.**
 ```jsonc
-// POST /api/auth/register/   { "username": "demo", "password": "passw0rd123" }
+// POST /api/auth/register/   { "username": "Ramesh", "password": "Ramesh@@@123" }
 // 201 Created
-{ "id": 1, "username": "demo", "token": "6b8b7dd8…" }
+{ "id": 1, "username": "Ramesh", "token": "6b8b7dd8…" }
 ```
 
 **Assumptions / known limits.** Username + password only (no email
@@ -346,16 +346,13 @@ creating/updating expenses.
 
 **Example + proof.**
 ```text
-⚠️ Budget alert: "Dining" is over its monthly limit.
-Spent 215.00 / 200.00 USD for June 2026.
+⚠️ Budget alert: "Food" is over its monthly limit.
+Spent 16.72 / 16.00 USD for June 2026.
 ```
 
-> **TODO (you):** create a Discord webhook (Server Settings → Integrations →
-> Webhooks → New Webhook → Copy URL), put it in `.env` as `DISCORD_WEBHOOK_URL`,
-> trigger an over-limit expense, and **paste the screenshot of the delivered
-> message here.**
->
-> `![Discord budget alert](docs/discord-alert.png)`
+**Proof of delivered alert:**
+
+![Discord budget alert](docs/discord-alert.png)
 
 **Assumptions / known limits.** Limit is interpreted in `BASE_CURRENCY`. The
 "fire once" check is per save event, not persisted state — re-crossing in a new
@@ -396,18 +393,13 @@ each expense may need a per-currency conversion before summing.
 
 ## Bugs Found and Fixed
 
-> Commit hashes are filled in once each `fix/*` branch is committed (see the
-> Git-workflow section). Replace the `<hash>` placeholders before submitting.
-
 | # | Bug | Root cause | Fix | Commit |
 |---|-----|------------|-----|--------|
-| 1 | Creating an expense returned `500` / `category` never saved | `ExpenseSerializer.Meta.fields` listed `"catgory"` — a typo that doesn't match the model field | Corrected to `"category"` in `expenses/serializers.py` | `<hash>` |
-| 2 | `POST /api/expenses/` raised `NameError` after a valid save | `return Response(serialzer.data …)` — `serialzer` is a typo, the variable is `serializer` | Fixed the variable name in `expense_list` (`views.py`) | `<hash>` |
-| 3 | `?start_date=` excluded expenses *on* the start date | Filter used `date__gt` (strictly greater) but the docs specify an **inclusive** range | Changed to `date__gte` in `_filter_expenses` (`views.py`) | `<hash>` |
-| 4 | `GET /api/expenses/summary/` raised `NameError: Sum` | `Sum` was used in the aggregate but never imported | (Summary was rewritten for currency conversion; the original needed `from django.db.models import Sum`.) The shipped version aggregates per-category in Python after converting each amount | `<hash>` |
-| 5 | `GET /api/expenses/summary/` hit the detail view and 404'd / errored | In `urls.py`, `expenses/<pk>/` was declared **before** `expenses/summary/`, so the router matched `"summary"` as a `pk` | Reordered so specific routes (`summary/`, `monthly-summary/`) precede the `<int:pk>` catch-all, and constrained `pk` to `<int:pk>` | `<hash>` |
-
-
+| 1 | Creating an expense returned `500` / `category` never saved | `ExpenseSerializer.Meta.fields` listed `"catgory"` — a typo that doesn't match the model field | Corrected to `"category"` in `expenses/serializers.py` | `045dfb1` |
+| 2 | `POST /api/expenses/` raised `NameError` after a valid save | `return Response(serialzer.data …)` — `serialzer` is a typo, the variable is `serializer` | Fixed the variable name in `expense_list` (`views.py`) | `28b4d31` |
+| 3 | `?start_date=` excluded expenses *on* the start date | Filter used `date__gt` (strictly greater) but the docs specify an **inclusive** range | Changed to `date__gte` in `_filter_expenses` (`views.py`) | `bacaa00` |
+| 4 | `GET /api/expenses/summary/` raised `NameError: Sum` | `Sum` was used in the aggregate but never imported | The original needed `from django.db.models import Sum`; the shipped version aggregates per-category in Python after converting each amount | `8d82ef3` |
+| 5 | `GET /api/expenses/summary/` hit the detail view and 404'd / errored | In `urls.py`, `expenses/<pk>/` was declared **before** `expenses/summary/`, so the router matched `"summary"` as a `pk` | Reordered so specific routes (`summary/`, `monthly-summary/`) precede the `<int:pk>` catch-all, and constrained `pk` to `<int:pk>` | `8b1b5ef` |
 
 ---
 

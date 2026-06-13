@@ -1,13 +1,5 @@
 from django.contrib import admin
-
-from .models import Category, Expense
-
-
-@admin.register(Category)
-class CategoryAdmin(admin.ModelAdmin):
-    list_display = ("name", "owner", "monthly_limit")
-    list_filter = ("owner",)
-    search_fields = ("name",)
+from ..models import Expense
 
 
 @admin.register(Expense)

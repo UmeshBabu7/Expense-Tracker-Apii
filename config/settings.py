@@ -20,10 +20,18 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    "rest_framework.authtoken",
+]
+
+THIRD_PART_APPS = [
     "rest_framework",
+    "rest_framework.authtoken",
+]
+
+LOCAL_APPS = [
     "expenses",
 ]
+
+INSTALLED_APPS += THIRD_PART_APPS + LOCAL_APPS
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -55,11 +63,13 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "config.wsgi.application"
 
+from decouple import config
+from dj_database_url import parse as db_url
+
 DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
-    }
+    "default": db_url(
+        config("DATABASE_URL", default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}")
+    )
 }
 
 AUTH_PASSWORD_VALIDATORS = [
