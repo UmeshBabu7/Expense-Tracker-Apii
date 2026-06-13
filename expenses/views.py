@@ -85,23 +85,42 @@ def category_detail(request, pk):
     return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+def _filter_expenses(request):
+    expenses = Expense.objects.filter(owner=request.user)
+    params = request.query_params
+
+    start_date = params.get("start_date")
+    end_date = params.get("end_date")
+
+    if start_date:
+        expenses = expenses.filter(date__gte=start_date)
+    if end_date:
+        expenses = expenses.filter(date__lte=end_date)
+
+    search = params.get("search")
+    if search:
+        expenses = expenses.filter(title__icontains=search)
+    category = params.get("category")
+    if category:
+        expenses = expenses.filter(category_id=category)
+    min_amount = params.get("min_amount")
+    if min_amount:
+        expenses = expenses.filter(amount__gte=min_amount)
+    max_amount = params.get("max_amount")
+    if max_amount:
+        expenses = expenses.filter(amount__lte=max_amount)
+
+    return expenses
+
+
 @api_view(["GET", "POST"])
 def expense_list(request):
     if request.method == "GET":
-        expenses = Expense.objects.filter(owner=request.user)
-
-        start_date = request.query_params.get("start_date")
-        end_date = request.query_params.get("end_date")
-        if start_date:
-            expenses = expenses.filter(date__gte=start_date)
-        if end_date:
-            expenses = expenses.filter(date__lte=end_date)
-
+        expenses = _filter_expenses(request)
         serializer = ExpenseSerializer(
             expenses, many=True, context={"request": request}
         )
         return Response(serializer.data)
-
     serializer = ExpenseSerializer(data=request.data, context={"request": request})
     serializer.is_valid(raise_exception=True)
     expense = serializer.save(owner=request.user)
