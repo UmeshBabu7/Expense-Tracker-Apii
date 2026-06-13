@@ -51,6 +51,7 @@ class ExpenseSerializer(serializers.ModelSerializer):
         return value.upper()
 
     def validate_category(self, value):
-        if value.owner_id != self.context["request"].user.id:
+        owner = self.context["request"].user
+        if value.owner_id != owner.id:
             raise serializers.ValidationError("Category not found.")
         return value
